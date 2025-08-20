@@ -3,6 +3,9 @@ import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import EmailProvider from "next-auth/providers/email";
 import { prisma } from "@/lib/prisma";
 
+// Force dynamic rendering for NextAuth API routes
+export const dynamic = "force-dynamic";
+
 const handler = NextAuth({
   adapter: PrismaAdapter(prisma),
   providers: [

@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { createNote, getNotesByUserId } from "@/lib/db";
 
+// Force dynamic rendering for API routes
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   try {
     const session = await getServerSession();
