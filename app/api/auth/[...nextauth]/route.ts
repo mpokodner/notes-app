@@ -2,6 +2,7 @@ import NextAuth from "next-auth";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import EmailProvider from "next-auth/providers/email";
 import { prisma } from "@/lib/prisma";
+import type { User, Account } from "next-auth";
 
 // Force dynamic rendering for NextAuth API routes
 export const dynamic = "force-dynamic";
@@ -145,14 +146,21 @@ const handler = NextAuth({
     async redirect({ url, baseUrl }) {
       console.log("Redirect callback - url:", url, "baseUrl:", baseUrl);
 
-      // Handle magic link redirects - always go to dashboard
+      // For magic link authentication, always redirect to dashboard
+      if (url.includes("/api/auth/callback/email")) {
+        console.log("Magic link callback detected, redirecting to dashboard");
+        return `${baseUrl}/dashboard`;
+      }
+
+      // Handle relative URLs
       if (url.startsWith("/")) {
-        // If it's a relative URL, make it absolute
         const redirectUrl = `${baseUrl}${url}`;
         console.log("Redirecting to relative URL:", redirectUrl);
         return redirectUrl;
-      } else if (new URL(url).origin === baseUrl) {
-        // Same origin, allow the URL
+      }
+
+      // Handle same origin URLs
+      if (new URL(url).origin === baseUrl) {
         console.log("Redirecting to same origin URL:", url);
         return url;
       }
@@ -160,29 +168,6 @@ const handler = NextAuth({
       // Default redirect to dashboard for successful authentication
       console.log("Redirecting to dashboard:", `${baseUrl}/dashboard`);
       return `${baseUrl}/dashboard`;
-    },
-  },
-  events: {
-    async signIn({ user, account, isNewUser }) {
-      try {
-        if (isNewUser) {
-          console.log("New user signed in:", user.email);
-        } else {
-          console.log("Existing user signed in:", user.email);
-        }
-
-        // Update user's emailVerified field when they sign in
-        await prisma.user.update({
-          where: { id: user.id },
-          data: { emailVerified: new Date() },
-        });
-      } catch (error) {
-        console.error("Error updating user emailVerified:", error);
-        // Don't throw error here as it would prevent sign-in
-      }
-    },
-    async createUser({ user }) {
-      console.log("New user created:", user.email);
     },
   },
   debug: process.env.NODE_ENV === "development",
