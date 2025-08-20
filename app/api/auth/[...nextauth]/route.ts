@@ -47,6 +47,69 @@ const handler = NextAuth({
         },
       },
       from: process.env.EMAIL_FROM!,
+      // Custom email template for better UX
+      sendVerificationRequest: async ({ identifier, url, provider }) => {
+        try {
+          console.log("Sending verification email to:", identifier);
+          console.log("Email URL:", url);
+
+          const transport = await import("nodemailer").then((mod) =>
+            mod.createTransport({
+              host: process.env.EMAIL_SERVER_HOST!,
+              port: parseInt(process.env.EMAIL_SERVER_PORT || "587"),
+              auth: {
+                user: process.env.EMAIL_SERVER_USER!,
+                pass: process.env.EMAIL_SERVER_PASSWORD!,
+              },
+              secure: false,
+              tls: {
+                rejectUnauthorized: false,
+              },
+            })
+          );
+
+          const result = await transport.sendMail({
+            to: identifier,
+            from: provider.from,
+            subject: `Sign in to NoteFlow`,
+            text: `Click here to sign in: ${url}`,
+            html: `
+              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                <div style="text-align: center; margin-bottom: 30px;">
+                  <h1 style="color: #2563eb; margin: 0; font-size: 28px;">NoteFlow</h1>
+                  <p style="color: #6b7280; margin: 10px 0 0 0;">Your secure note-taking app</p>
+                </div>
+                
+                <div style="background-color: #f8fafc; border-radius: 8px; padding: 30px; text-align: center;">
+                  <h2 style="color: #1f2937; margin: 0 0 20px 0; font-size: 24px;">Sign in to NoteFlow</h2>
+                  <p style="color: #4b5563; margin: 0 0 30px 0; font-size: 16px; line-height: 1.5;">
+                    Click the button below to securely sign in to your account. This link will expire in 24 hours.
+                  </p>
+                  
+                  <a href="${url}" style="display: inline-block; background-color: #2563eb; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px; margin: 20px 0;">
+                    Sign in to NoteFlow
+                  </a>
+                  
+                  <p style="color: #6b7280; font-size: 14px; margin: 30px 0 0 0;">
+                    If you didn't request this email, you can safely ignore it.
+                  </p>
+                </div>
+                
+                <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+                  <p style="color: #9ca3af; font-size: 12px; margin: 0;">
+                    © 2024 NoteFlow. All rights reserved.
+                  </p>
+                </div>
+              </div>
+            `,
+          });
+
+          console.log("Email sent successfully:", result.messageId);
+        } catch (error) {
+          console.error("Error sending verification email:", error);
+          throw new Error("Failed to send verification email");
+        }
+      },
     }),
   ],
   session: {
@@ -82,7 +145,7 @@ const handler = NextAuth({
     async redirect({ url, baseUrl }) {
       console.log("Redirect callback - url:", url, "baseUrl:", baseUrl);
 
-      // Always redirect to dashboard after successful authentication
+      // Handle magic link redirects - always go to dashboard
       if (url.startsWith("/")) {
         // If it's a relative URL, make it absolute
         const redirectUrl = `${baseUrl}${url}`;

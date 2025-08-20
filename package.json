@@ -16,7 +16,8 @@
     "test:email:esm": "node scripts/test-email.js",
     "check:nodemailer": "node scripts/check-nodemailer.cjs",
     "test:auth": "node scripts/test-auth.js",
-    "test:magic-link": "node scripts/test-magic-link.js"
+    "test:magic-link": "node scripts/test-magic-link.js",
+    "setup:production": "node scripts/setup-production.js"
   },
   "dependencies": {
     "@next-auth/prisma-adapter": "^1.0.7",
