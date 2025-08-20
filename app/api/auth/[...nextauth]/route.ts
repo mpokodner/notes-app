@@ -41,60 +41,12 @@ const handler = NextAuth({
           user: process.env.EMAIL_SERVER_USER!,
           pass: process.env.EMAIL_SERVER_PASSWORD!,
         },
-        secure: false, // Use TLS
+        secure: false,
         tls: {
-          rejectUnauthorized: false, // Allow self-signed certificates
+          rejectUnauthorized: false,
         },
       },
       from: process.env.EMAIL_FROM!,
-      sendVerificationRequest: async ({ identifier, url, provider }) => {
-        try {
-          console.log("Sending verification email to:", identifier);
-          console.log("Email URL:", url);
-
-          const transport = await import("nodemailer").then((mod) =>
-            mod.createTransport({
-              host: process.env.EMAIL_SERVER_HOST!,
-              port: parseInt(process.env.EMAIL_SERVER_PORT || "587"),
-              auth: {
-                user: process.env.EMAIL_SERVER_USER!,
-                pass: process.env.EMAIL_SERVER_PASSWORD!,
-              },
-              secure: false,
-              tls: {
-                rejectUnauthorized: false,
-              },
-            })
-          );
-
-          const result = await transport.sendMail({
-            to: identifier,
-            from: provider.from,
-            subject: `Sign in to NoteFlow`,
-            text: `Click here to sign in: ${url}`,
-            html: `
-              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <h2 style="color: #2563eb;">Sign in to NoteFlow</h2>
-                <p>Click the button below to sign in to your account:</p>
-                <a href="${url}" style="display: inline-block; background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 16px 0;">
-                  Sign in to NoteFlow
-                </a>
-                <p style="color: #6b7280; font-size: 14px;">
-                  If you didn't request this email, you can safely ignore it.
-                </p>
-                <p style="color: #6b7280; font-size: 14px;">
-                  This link will expire in 24 hours.
-                </p>
-              </div>
-            `,
-          });
-
-          console.log("Email sent successfully:", result.messageId);
-        } catch (error) {
-          console.error("Error sending verification email:", error);
-          throw new Error("Failed to send verification email");
-        }
-      },
     }),
   ],
   session: {
