@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
-import { signIn, useSession } from "next-auth/react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useState, Suspense } from "react";
+import { signIn } from "next-auth/react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,41 +19,13 @@ function SignInContent() {
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState("");
-  const { data: session, status } = useSession();
-  const router = useRouter();
   const searchParams = useSearchParams();
 
-  // Check if user is already authenticated
-  useEffect(() => {
-    if (status === "authenticated" && session) {
-      // Check if this is a new user (no name set)
-      if (!session.user?.name) {
-        // Redirect to account creation page
-        router.push(`/auth/create-account?email=${session.user?.email}`);
-      } else {
-        // Redirect to dashboard
-        router.push("/dashboard");
-      }
-    }
-  }, [status, session, router]);
-
-  // Handle magic link callback
-  useEffect(() => {
-    const error = searchParams.get("error");
-    const callbackUrl = searchParams.get("callbackUrl");
-
-    if (error) {
-      setMessage(`Authentication error: ${error}`);
-    } else if (callbackUrl && status === "authenticated") {
-      // User successfully authenticated via magic link
-      if (session?.user?.name) {
-        router.push("/dashboard");
-      } else {
-        // New user - redirect to account creation
-        router.push(`/auth/create-account?email=${session?.user?.email}`);
-      }
-    }
-  }, [searchParams, status, session, router]);
+  // Check for error messages from URL params
+  const error = searchParams.get("error");
+  if (error) {
+    setMessage(`Authentication error: ${error}`);
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,17 +49,6 @@ function SignInContent() {
       setIsLoading(false);
     }
   };
-
-  if (status === "loading") {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-2 text-gray-600">Loading...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">

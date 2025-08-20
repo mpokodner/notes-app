@@ -68,7 +68,6 @@ const handler = NextAuth({
         token.id = user.id;
         token.email = user.email;
         token.name = user.name;
-        token.isNewUser = user.name === null || user.name === undefined;
       }
       return token;
     },
@@ -83,9 +82,9 @@ const handler = NextAuth({
     async redirect({ url, baseUrl }) {
       console.log("Redirect callback - url:", url, "baseUrl:", baseUrl);
 
-      // Handle magic link redirects
+      // Always redirect to dashboard after successful authentication
       if (url.startsWith("/")) {
-        // Relative URLs are relative to the base URL
+        // If it's a relative URL, make it absolute
         const redirectUrl = `${baseUrl}${url}`;
         console.log("Redirecting to relative URL:", redirectUrl);
         return redirectUrl;
@@ -105,7 +104,6 @@ const handler = NextAuth({
       try {
         if (isNewUser) {
           console.log("New user signed in:", user.email);
-          // For new users, we'll handle the redirect in the client
         } else {
           console.log("Existing user signed in:", user.email);
         }
