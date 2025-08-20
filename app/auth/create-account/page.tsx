@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { signIn, useSession } from "next-auth/react";
-import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,45 +15,29 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-function SignInContent() {
-  const [email, setEmail] = useState("");
+function CreateAccountContent() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const { data: session, status } = useSession();
+  const [name, setName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState("");
-  const { data: session, status } = useSession();
-  const router = useRouter();
-  const searchParams = useSearchParams();
+  const [email, setEmail] = useState("");
 
-  // Check if user is already authenticated
+  // Get email from URL params (magic link)
   useEffect(() => {
-    if (status === "authenticated" && session) {
-      // Check if this is a new user (no name set)
-      if (!session.user?.name) {
-        // Redirect to account creation page
-        router.push(`/auth/create-account?email=${session.user?.email}`);
-      } else {
-        // Redirect to dashboard
-        router.push("/dashboard");
-      }
+    const emailParam = searchParams.get("email");
+    if (emailParam) {
+      setEmail(emailParam);
+    }
+  }, [searchParams]);
+
+  // Redirect if already authenticated with a complete profile
+  useEffect(() => {
+    if (status === "authenticated" && session?.user?.name) {
+      router.push("/dashboard");
     }
   }, [status, session, router]);
-
-  // Handle magic link callback
-  useEffect(() => {
-    const error = searchParams.get("error");
-    const callbackUrl = searchParams.get("callbackUrl");
-
-    if (error) {
-      setMessage(`Authentication error: ${error}`);
-    } else if (callbackUrl && status === "authenticated") {
-      // User successfully authenticated via magic link
-      if (session?.user?.name) {
-        router.push("/dashboard");
-      } else {
-        // New user - redirect to account creation
-        router.push(`/auth/create-account?email=${session?.user?.email}`);
-      }
-    }
-  }, [searchParams, status, session, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,18 +45,41 @@ function SignInContent() {
     setMessage("");
 
     try {
-      const result = await signIn("email", {
+      // Create account via API
+      const response = await fetch("/api/auth/create-account", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, name }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to create account");
+      }
+
+      setMessage("Account created successfully! Redirecting to dashboard...");
+
+      // Sign in the user after account creation
+      const signInResult = await signIn("email", {
         email,
         redirect: false,
       });
 
-      if (result?.error) {
-        setMessage("An error occurred. Please try again.");
-      } else {
-        setMessage("Check your email for a sign-in link!");
+      if (signInResult?.error) {
+        throw new Error("Failed to sign in after account creation");
       }
-    } catch {
-      setMessage("An error occurred. Please try again.");
+
+      // Redirect to dashboard after a short delay
+      setTimeout(() => {
+        router.push("/dashboard");
+      }, 2000);
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "An error occurred. Please try again."
+      );
     } finally {
       setIsLoading(false);
     }
@@ -97,19 +104,19 @@ function SignInContent() {
             <h1 className="text-3xl font-bold text-gray-900">NoteFlow</h1>
           </Link>
           <h2 className="mt-6 text-2xl font-bold text-gray-900">
-            Sign in to your account
+            Complete Your Account
           </h2>
           <p className="mt-2 text-sm text-gray-600">
-            Enter your email address and we&apos;ll send you a magic link to
-            sign in.
+            Welcome! Please provide your name to complete your account setup.
           </p>
         </div>
 
         <Card>
           <CardHeader>
-            <CardTitle>Sign In</CardTitle>
+            <CardTitle>Create Account</CardTitle>
             <CardDescription>
-              We&apos;ll send you a magic link to sign in securely.
+              You&apos;re almost there! Just add your name to complete your
+              account.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -119,9 +126,23 @@ function SignInContent() {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="Enter your email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  disabled
+                  className="bg-gray-50"
+                />
+                <p className="text-xs text-gray-500">
+                  This email was verified via magic link
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="name">Full name</Label>
+                <Input
+                  id="name"
+                  type="text"
+                  placeholder="Enter your full name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
                   required
                   disabled={isLoading}
                 />
@@ -130,7 +151,7 @@ function SignInContent() {
               {message && (
                 <div
                   className={`text-sm ${
-                    message.includes("Check your email")
+                    message.includes("successfully")
                       ? "text-green-600"
                       : "text-red-600"
                   }`}
@@ -140,18 +161,18 @@ function SignInContent() {
               )}
 
               <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Sending..." : "Send magic link"}
+                {isLoading ? "Creating Account..." : "Complete Account Setup"}
               </Button>
             </form>
 
             <div className="mt-6 text-center">
               <p className="text-sm text-gray-600">
-                Don&apos;t have an account?{" "}
+                Already have an account?{" "}
                 <Link
-                  href="/auth/signup"
+                  href="/auth/signin"
                   className="text-blue-600 hover:text-blue-500 font-medium"
                 >
-                  Sign up
+                  Sign in
                 </Link>
               </p>
             </div>
@@ -162,7 +183,7 @@ function SignInContent() {
   );
 }
 
-function SignInFallback() {
+function CreateAccountFallback() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
@@ -171,15 +192,17 @@ function SignInFallback() {
             <h1 className="text-3xl font-bold text-gray-900">NoteFlow</h1>
           </Link>
           <h2 className="mt-6 text-2xl font-bold text-gray-900">
-            Sign in to your account
+            Complete Your Account
           </h2>
-          <p className="mt-2 text-sm text-gray-600">Loading sign-in form...</p>
+          <p className="mt-2 text-sm text-gray-600">Loading account setup...</p>
         </div>
 
         <Card>
           <CardHeader>
-            <CardTitle>Sign In</CardTitle>
-            <CardDescription>Loading authentication options...</CardDescription>
+            <CardTitle>Create Account</CardTitle>
+            <CardDescription>
+              Loading your account information...
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -189,6 +212,18 @@ function SignInFallback() {
                   id="email"
                   type="email"
                   disabled
+                  className="bg-gray-50"
+                  placeholder="Loading..."
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="name">Full name</Label>
+                <Input
+                  id="name"
+                  type="text"
+                  disabled
+                  className="bg-gray-50"
                   placeholder="Loading..."
                 />
               </div>
@@ -204,10 +239,10 @@ function SignInFallback() {
   );
 }
 
-export default function SignInPage() {
+export default function CreateAccountPage() {
   return (
-    <Suspense fallback={<SignInFallback />}>
-      <SignInContent />
+    <Suspense fallback={<CreateAccountFallback />}>
+      <CreateAccountContent />
     </Suspense>
   );
 }

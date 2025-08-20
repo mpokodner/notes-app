@@ -68,6 +68,7 @@ const handler = NextAuth({
         token.id = user.id;
         token.email = user.email;
         token.name = user.name;
+        token.isNewUser = user.name === null || user.name === undefined;
       }
       return token;
     },
@@ -104,6 +105,7 @@ const handler = NextAuth({
       try {
         if (isNewUser) {
           console.log("New user signed in:", user.email);
+          // For new users, we'll handle the redirect in the client
         } else {
           console.log("Existing user signed in:", user.email);
         }
