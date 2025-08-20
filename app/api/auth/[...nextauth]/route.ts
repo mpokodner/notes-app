@@ -51,42 +51,68 @@ const handler = NextAuth({
   ],
   session: {
     strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+  },
+  jwt: {
+    maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   pages: {
     signIn: "/auth/signin",
     verifyRequest: "/auth/verify-request",
+    error: "/auth/error",
   },
   callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
+    async jwt({ token, user, account }) {
+      // Initial sign in
+      if (account && user) {
         token.id = user.id;
+        token.email = user.email;
+        token.name = user.name;
       }
       return token;
     },
     async session({ session, token }) {
       if (token && session.user) {
         session.user.id = token.id as string;
+        session.user.email = token.email as string;
+        session.user.name = token.name as string;
       }
       return session;
     },
     async redirect({ url, baseUrl }) {
-      // Redirect to dashboard after successful sign-in
-      if (url.startsWith(baseUrl)) {
+      console.log("Redirect callback - url:", url, "baseUrl:", baseUrl);
+
+      // Handle magic link redirects
+      if (url.startsWith("/")) {
+        // Relative URLs are relative to the base URL
+        const redirectUrl = `${baseUrl}${url}`;
+        console.log("Redirecting to relative URL:", redirectUrl);
+        return redirectUrl;
+      } else if (new URL(url).origin === baseUrl) {
+        // Same origin, allow the URL
+        console.log("Redirecting to same origin URL:", url);
         return url;
       }
-      // If signing in from magic link, redirect to dashboard
+
+      // Default redirect to dashboard for successful authentication
+      console.log("Redirecting to dashboard:", `${baseUrl}/dashboard`);
       return `${baseUrl}/dashboard`;
     },
   },
   events: {
-    async signIn({ user }) {
+    async signIn({ user, account, isNewUser }) {
       try {
+        if (isNewUser) {
+          console.log("New user signed in:", user.email);
+        } else {
+          console.log("Existing user signed in:", user.email);
+        }
+
         // Update user's emailVerified field when they sign in
         await prisma.user.update({
           where: { id: user.id },
           data: { emailVerified: new Date() },
         });
-        console.log("User signed in:", user.email);
       } catch (error) {
         console.error("Error updating user emailVerified:", error);
         // Don't throw error here as it would prevent sign-in
