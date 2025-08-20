@@ -1,6 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,7 +12,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-export default function AuthErrorPage() {
+function AuthErrorContent() {
   const searchParams = useSearchParams();
   const error = searchParams.get("error");
 
@@ -44,33 +45,33 @@ export default function AuthErrorPage() {
         <Card>
           <CardHeader>
             <CardTitle className="text-red-600">Sign In Error</CardTitle>
-            <CardDescription>
-              {getErrorMessage(error)}
-            </CardDescription>
+            <CardDescription>{getErrorMessage(error)}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="text-sm text-gray-600">
-              <p>Error code: <code className="bg-gray-100 px-2 py-1 rounded">{error || "Unknown"}</code></p>
+              <p>
+                Error code:{" "}
+                <code className="bg-gray-100 px-2 py-1 rounded">
+                  {error || "Unknown"}
+                </code>
+              </p>
             </div>
 
             <div className="space-y-2">
               <Button asChild className="w-full">
-                <Link href="/auth/signin">
-                  Try Again
-                </Link>
+                <Link href="/auth/signin">Try Again</Link>
               </Button>
-              
+
               <Button asChild variant="outline" className="w-full">
-                <Link href="/">
-                  Go Home
-                </Link>
+                <Link href="/">Go Home</Link>
               </Button>
             </div>
 
             {error === "Verification" && (
               <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
                 <p className="text-sm text-blue-800">
-                  If you&apos;re having trouble with the magic link, try requesting a new one from the sign-in page.
+                  If you&apos;re having trouble with the magic link, try
+                  requesting a new one from the sign-in page.
                 </p>
               </div>
             )}
@@ -78,5 +79,48 @@ export default function AuthErrorPage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+function AuthErrorFallback() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-8">
+        <div className="text-center">
+          <Link href="/" className="inline-block">
+            <h1 className="text-3xl font-bold text-gray-900">NoteFlow</h1>
+          </Link>
+          <h2 className="mt-6 text-2xl font-bold text-gray-900">
+            Authentication Error
+          </h2>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-red-600">Sign In Error</CardTitle>
+            <CardDescription>Loading error details...</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Button asChild className="w-full">
+                <Link href="/auth/signin">Try Again</Link>
+              </Button>
+
+              <Button asChild variant="outline" className="w-full">
+                <Link href="/">Go Home</Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+export default function AuthErrorPage() {
+  return (
+    <Suspense fallback={<AuthErrorFallback />}>
+      <AuthErrorContent />
+    </Suspense>
   );
 }
